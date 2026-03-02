@@ -1,76 +1,117 @@
 name: Journal Insight Analyzer
-'on':
+
+on:
   push:
     paths:
-    - '**/entries/*.md'
+      - '**/entries/*.md'
+
 permissions:
   contents: write
+
 jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Find new entry
-      id: entry
-      run: 'NEW_FILE=$(git diff --name-only HEAD~1 HEAD -- "**/entries/*.md" | head
-        -1)
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-        echo "file=$NEW_FILE" >> $GITHUB_OUTPUT
+      - name: Find new entry
+        id: entry
+        run: |
+          NEW_FILE=$(git diff --name-only HEAD~1 HEAD -- '**/entries/*.md' | head -1)
+          echo "file=$NEW_FILE" >> $GITHUB_OUTPUT
 
-        '
-    - name: Collect all entries
-      id: collect
-      run: "> /tmp/all_entries.txt\nfor f in $(find . -path \"*/entries/*.md\" -not\
-        \ -name \".gitkeep\" | sort); do\n  FILENAME=$(basename \"$f\")\n  echo \"\
-        ---\" >> /tmp/all_entries.txt\n  echo \"## ${FILENAME%.md}\" >> /tmp/all_entries.txt\n\
-        \  echo \"\" >> /tmp/all_entries.txt\n  cat \"$f\" >> /tmp/all_entries.txt\n\
-        \  echo \"\" >> /tmp/all_entries.txt\ndone\nENTRY_COUNT=$(find . -path \"\
-        */entries/*.md\" -not -name \".gitkeep\" | wc -l | tr -d \" \")\necho \"count=$ENTRY_COUNT\"\
-        \ >> $GITHUB_OUTPUT\n"
-    - name: Analyze with Claude
-      env:
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      run: "ALL_ENTRIES=$(cat /tmp/all_entries.txt)\nNEW_ENTRY=$(cat \"${{ steps.entry.outputs.file\
-        \ }}\")\nENTRY_COUNT=${{ steps.collect.outputs.count }}\n\njq -n \\\n  --arg\
-        \ all \"$ALL_ENTRIES\" \\\n  --arg new \"$NEW_ENTRY\" \\\n  --arg cnt \"$ENTRY_COUNT\"\
-        \ \\\n  '{\n    model: \"claude-sonnet-4-20250514\",\n    max_tokens: 4096,\n\
-        \    messages: [{\n      role: \"user\",\n      content: (\"You are a personal\
-        \ growth coach and psychology expert. Respond in Korean.\\n\\nThe user has\
-        \ written \" + $cnt + \" journal entries so far.\\n\\n=== All entries ===\\\
-        n\" + $all + \"\\n=== End ===\\n\\nToday new entry:\\n\" + $new + \"\\n\\\
-        nAnalyze with these sections in markdown (warm, personal tone, in Korean):\\\
-        n\\n## \uD83C\uDFAD 감정/기분 분석\\nToday emotion state and overall emotion trend.\\\
-        n\\n## \uD83D\uDD01 반복되는 패턴\\nRecurring concerns, themes, behavior patterns.\\\
-        n\\n## \uD83C\uDF31 성장 포인트\\nGrowth and changes compared to before.\\n\\n##\
-        \ ⚠️ 주의할 점\\nAreas needing improvement, gentle advice.\\n\\n## \uD83D\uDCA1\
-        \ 핵심 키워드 & 관심사\\nKey keywords and interest changes.\\n\\n## \uD83D\uDCCA 종합\
-        \ 인사이트\\nOverall summary and suggestions for the future.\\n\\nIf only 1 entry\
-        \ exists, skip pattern analysis. Instead do deep analysis of the first entry\
-        \ and expectations.\")\n    }]\n  }' > /tmp/request.json\n\ncurl -s https://api.anthropic.com/v1/messages\
-        \ \\\n  -H \"content-type: application/json\" \\\n  -H \"x-api-key: $ANTHROPIC_API_KEY\"\
-        \ \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -d @/tmp/request.json |\
-        \ jq -r '.content[0].text // \"Analysis failed\"' > /tmp/insight.md\n"
-    - name: Save insight
-      run: "NEW_FILE=\"${{ steps.entry.outputs.file }}\"\nBASENAME=$(basename \"$NEW_FILE\"\
-        \ .md)\nMONTH_DIR=$(dirname \"$(dirname \"$NEW_FILE\")\")\nINSIGHT_PATH=\"\
-        ${MONTH_DIR}/insights/${BASENAME}-insight.md\"\nmkdir -p \"$(dirname \"$INSIGHT_PATH\"\
-        )\"\n\n{\n  echo \"# $BASENAME 회고 인사이트\"\n  echo \"\"\n  echo \"> 분석 대상: 총\
-        \ ${{ steps.collect.outputs.count }}개의 회고\"\n  echo \"> 분석: Claude (Anthropic)\"\
-        \n  echo \"> 생성일: $(date -u '+%Y-%m-%d %H:%M UTC')\"\n  echo \"\"\n  echo\
-        \ \"---\"\n  echo \"\"\n  cat /tmp/insight.md\n} > \"$INSIGHT_PATH\"\n\ngit\
-        \ config user.name \"Journal Bot\"\ngit config user.email \"bot@journal.local\"\
-        \ngit add \"$INSIGHT_PATH\"\ngit commit -m \"인사이트: $BASENAME\"\ngit push\n"
-    - name: Send to Telegram
-      env:
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      run: "BASENAME=$(basename \"${{ steps.entry.outputs.file }}\" .md)\nINSIGHT=$(cat\
-        \ /tmp/insight.md)\n\nif [ ${#INSIGHT} -gt 3800 ]; then\n  INSIGHT=\"${INSIGHT:0:3800}...\n\
-        \n(전체 인사이트는 GitHub에서 확인하세요)\"\nfi\n\njq -n \\\n  --arg chat \"$TELEGRAM_CHAT_ID\"\
-        \ \\\n  --arg text \"*$BASENAME 회고 인사이트*\n\n$INSIGHT\" \\\n  '{chat_id: $chat,\
-        \ parse_mode: \"Markdown\", text: $text}' > /tmp/tg_msg.json\n\ncurl -s -X\
-        \ POST \"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage\" \\\n\
-        \  -H \"content-type: application/json\" \\\n  -d @/tmp/tg_msg.json > /dev/null\n"
+      - name: Collect all entries
+        id: collect
+        run: |
+          > /tmp/all_entries.txt
+          for f in $(find . -path '*/entries/*.md' -not -name '.gitkeep' | sort); do
+            FILENAME=$(basename "$f")
+            echo "---" >> /tmp/all_entries.txt
+            echo "## ${FILENAME%.md}" >> /tmp/all_entries.txt
+            echo "" >> /tmp/all_entries.txt
+            cat "$f" >> /tmp/all_entries.txt
+            echo "" >> /tmp/all_entries.txt
+          done
+          ENTRY_COUNT=$(find . -path '*/entries/*.md' -not -name '.gitkeep' | wc -l | tr -d ' ')
+          echo "count=$ENTRY_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Analyze with Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ALL_ENTRIES=$(cat /tmp/all_entries.txt)
+          NEW_ENTRY=$(cat "${{ steps.entry.outputs.file }}")
+          ENTRY_COUNT=${{ steps.collect.outputs.count }}
+
+          jq -n \
+            --arg all "$ALL_ENTRIES" \
+            --arg new_entry "$NEW_ENTRY" \
+            --arg cnt "$ENTRY_COUNT" \
+            '{
+              model: "claude-sonnet-4-20250514",
+              max_tokens: 4096,
+              messages: [{
+                role: "user",
+                content: ("You are a personal growth coach and psychology expert. Respond in Korean.\n\nThe user has written " + $cnt + " journal entries so far.\n\n=== All entries ===\n" + $all + "\n=== End ===\n\nToday new entry:\n" + $new_entry + "\n\nAnalyze with these sections in markdown (warm, personal tone, in Korean):\n\n## \ud83c\udfad \uac10\uc815/\uae30\ubd84 \ubd84\uc11d\nAnalyze today emotion state and overall emotion trend.\n\n## \ud83d\udd01 \ubc18\ubcf5\ub418\ub294 \ud328\ud134\nIdentify recurring concerns, themes, behavior patterns.\n\n## \ud83c\udf31 \uc131\uc7a5 \ud3ec\uc778\ud2b8\nFind growth and changes compared to before.\n\n## \u26a0\ufe0f \uc8fc\uc758\ud560 \uc810\nGently advise on areas needing improvement.\n\n## \ud83d\udca1 \ud575\uc2ec \ud0a4\uc6cc\ub4dc & \uad00\uc2ec\uc0ac\nSummarize key keywords and interest changes.\n\n## \ud83d\udcca \uc885\ud569 \uc778\uc0ac\uc774\ud2b8\nProvide overall summary and suggestions.\n\nIf only 1 entry exists, skip pattern analysis and do deep analysis of the first entry instead.")
+              }]
+            }' > /tmp/request.json
+
+          curl -s https://api.anthropic.com/v1/messages \
+            -H "content-type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d @/tmp/request.json | jq -r '.content[0].text // "Analysis failed"' > /tmp/insight.md
+
+      - name: Save insight
+        run: |
+          NEW_FILE="${{ steps.entry.outputs.file }}"
+          BASENAME=$(basename "$NEW_FILE" .md)
+          MONTH_DIR=$(dirname "$(dirname "$NEW_FILE")")
+          INSIGHT_PATH="${MONTH_DIR}/insights/${BASENAME}-insight.md"
+          mkdir -p "$(dirname "$INSIGHT_PATH")"
+
+          {
+            echo "# $BASENAME 회고 인사이트"
+            echo ""
+            echo "> 분석 대상: 총 ${{ steps.collect.outputs.count }}개의 회고"
+            echo "> 분석: Claude (Anthropic)"
+            echo "> 생성일: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo "---"
+            echo ""
+            cat /tmp/insight.md
+          } > "$INSIGHT_PATH"
+
+          git config user.name "Journal Bot"
+          git config user.email "bot@journal.local"
+          git add "$INSIGHT_PATH"
+          git commit -m "인사이트: $BASENAME"
+          git push
+
+      - name: Send to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          BASENAME=$(basename "${{ steps.entry.outputs.file }}" .md)
+          INSIGHT=$(cat /tmp/insight.md)
+
+          if [ ${#INSIGHT} -gt 3800 ]; then
+            INSIGHT="${INSIGHT:0:3800}...
+
+          (전체 인사이트는 GitHub에서 확인하세요)"
+          fi
+
+          jq -n \
+            --arg chat_id "$TELEGRAM_CHAT_ID" \
+            --arg text "*${BASENAME} 회고 인사이트*
+
+          ${INSIGHT}" \
+            '{chat_id: $chat_id, parse_mode: "Markdown", text: $text}' > /tmp/tg_msg.json
+
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "content-type: application/json" \
+            -d @/tmp/tg_msg.json > /dev/null
