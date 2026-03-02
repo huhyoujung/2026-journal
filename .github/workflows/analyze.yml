@@ -38,6 +38,37 @@ jobs:
           ENTRY_COUNT=$(find . -path '*/entries/*.md' -not -name '.gitkeep' | wc -l | tr -d ' ')
           echo "count=$ENTRY_COUNT" >> $GITHUB_OUTPUT
 
+      - name: Build prompt
+        id: prompt
+        run: |
+          ENTRY_COUNT=${{ steps.collect.outputs.count }}
+
+          cat > /tmp/system_prompt.txt << 'SYSEOF'
+          You are a personal growth coach and psychology expert. Respond entirely in Korean.
+          Analyze the journal entries and provide insights in the following sections using markdown format with a warm and personal tone.
+
+          Sections:
+          ## 감정/기분 분석
+          Analyze today's emotion state and overall emotion trend.
+
+          ## 반복되는 패턴
+          Identify recurring concerns, themes, behavior patterns.
+
+          ## 성장 포인트
+          Find growth and changes compared to before.
+
+          ## 주의할 점
+          Gently advise on areas needing improvement.
+
+          ## 핵심 키워드 & 관심사
+          Summarize key keywords and interest changes.
+
+          ## 종합 인사이트
+          Provide overall summary and suggestions.
+
+          If only 1 entry exists, skip pattern analysis and do deep analysis of the first entry instead.
+          SYSEOF
+
       - name: Analyze with Claude
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -45,25 +76,44 @@ jobs:
           ALL_ENTRIES=$(cat /tmp/all_entries.txt)
           NEW_ENTRY=$(cat "${{ steps.entry.outputs.file }}")
           ENTRY_COUNT=${{ steps.collect.outputs.count }}
+          SYSTEM_PROMPT=$(cat /tmp/system_prompt.txt)
+
+          USER_MSG="총 ${ENTRY_COUNT}개의 회고가 있습니다.
+
+          === 전체 회고 ===
+          ${ALL_ENTRIES}
+          === 끝 ===
+
+          오늘의 새 회고:
+          ${NEW_ENTRY}"
 
           jq -n \
-            --arg all "$ALL_ENTRIES" \
-            --arg new_entry "$NEW_ENTRY" \
-            --arg cnt "$ENTRY_COUNT" \
+            --arg system "$SYSTEM_PROMPT" \
+            --arg user "$USER_MSG" \
             '{
               model: "claude-sonnet-4-20250514",
               max_tokens: 4096,
-              messages: [{
-                role: "user",
-                content: ("You are a personal growth coach and psychology expert. Respond in Korean.\n\nThe user has written " + $cnt + " journal entries so far.\n\n=== All entries ===\n" + $all + "\n=== End ===\n\nToday new entry:\n" + $new_entry + "\n\nAnalyze with these sections in markdown (warm, personal tone, in Korean):\n\n## \ud83c\udfad \uac10\uc815/\uae30\ubd84 \ubd84\uc11d\nAnalyze today emotion state and overall emotion trend.\n\n## \ud83d\udd01 \ubc18\ubcf5\ub418\ub294 \ud328\ud134\nIdentify recurring concerns, themes, behavior patterns.\n\n## \ud83c\udf31 \uc131\uc7a5 \ud3ec\uc778\ud2b8\nFind growth and changes compared to before.\n\n## \u26a0\ufe0f \uc8fc\uc758\ud560 \uc810\nGently advise on areas needing improvement.\n\n## \ud83d\udca1 \ud575\uc2ec \ud0a4\uc6cc\ub4dc & \uad00\uc2ec\uc0ac\nSummarize key keywords and interest changes.\n\n## \ud83d\udcca \uc885\ud569 \uc778\uc0ac\uc774\ud2b8\nProvide overall summary and suggestions.\n\nIf only 1 entry exists, skip pattern analysis and do deep analysis of the first entry instead.")
-              }]
+              system: $system,
+              messages: [{role: "user", content: $user}]
             }' > /tmp/request.json
 
-          curl -s https://api.anthropic.com/v1/messages \
+          RESPONSE=$(curl -s -w "\n%{http_code}" https://api.anthropic.com/v1/messages \
             -H "content-type: application/json" \
             -H "x-api-key: $ANTHROPIC_API_KEY" \
             -H "anthropic-version: 2023-06-01" \
-            -d @/tmp/request.json | jq -r '.content[0].text // "Analysis failed"' > /tmp/insight.md
+            -d @/tmp/request.json)
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "API Error: $BODY"
+            echo "Analysis failed - API returned $HTTP_CODE" > /tmp/insight.md
+          else
+            echo "$BODY" | jq -r '.content[0].text // "Analysis failed"' > /tmp/insight.md
+          fi
 
       - name: Save insight
         run: |
@@ -74,7 +124,7 @@ jobs:
           mkdir -p "$(dirname "$INSIGHT_PATH")"
 
           {
-            echo "# $BASENAME 회고 인사이트"
+            echo "# ${BASENAME} 회고 인사이트"
             echo ""
             echo "> 분석 대상: 총 ${{ steps.collect.outputs.count }}개의 회고"
             echo "> 분석: Claude (Anthropic)"
@@ -88,10 +138,11 @@ jobs:
           git config user.name "Journal Bot"
           git config user.email "bot@journal.local"
           git add "$INSIGHT_PATH"
-          git commit -m "인사이트: $BASENAME"
+          git commit -m "인사이트: ${BASENAME}"
           git push
 
       - name: Send to Telegram
+        if: success()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -107,11 +158,11 @@ jobs:
 
           jq -n \
             --arg chat_id "$TELEGRAM_CHAT_ID" \
-            --arg text "*${BASENAME} 회고 인사이트*
+            --arg text "📓 *${BASENAME} 회고 인사이트*
 
           ${INSIGHT}" \
             '{chat_id: $chat_id, parse_mode: "Markdown", text: $text}' > /tmp/tg_msg.json
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -H "content-type: application/json" \
-            -d @/tmp/tg_msg.json > /dev/null
+            -d @/tmp/tg_msg.json
