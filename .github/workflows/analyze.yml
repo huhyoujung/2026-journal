@@ -1,0 +1,121 @@
+name: "Journal Insight Analyzer"
+
+on:
+  push:
+    paths:
+      - "**/entries/*.md"
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find new entry
+        id: entry
+        run: |
+          NEW_FILE=$(git diff --name-only HEAD~1 HEAD -- "**/entries/*.md" | head -1)
+          echo "file=$NEW_FILE" >> $GITHUB_OUTPUT
+          echo "Found new entry: $NEW_FILE"
+
+      - name: Collect all entries
+        id: collect
+        run: |
+          ALL_ENTRIES=""
+          for f in $(find . -path "*/entries/*.md" -not -name ".gitkeep" | sort); do
+            FILENAME=$(basename "$f")
+            CONTENT=$(cat "$f")
+            ALL_ENTRIES="${ALL_ENTRIES}
+          ---
+          ${FILENAME%.md}
+
+          ${CONTENT}
+          "
+          done
+          echo "$ALL_ENTRIES" > /tmp/all_entries.txt
+          ENTRY_COUNT=$(find . -path "*/entries/*.md" -not -name ".gitkeep" | wc -l)
+          echo "count=$ENTRY_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Analyze with Claude
+        id: analyze
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ALL_ENTRIES=$(cat /tmp/all_entries.txt)
+          NEW_ENTRY=$(cat "${{ steps.entry.outputs.file }}")
+          ENTRY_COUNT=${{ steps.collect.outputs.count }}
+
+          PROMPT="You are a personal growth coach and psychology expert. Respond in Korean.
+
+          The user has written ${ENTRY_COUNT} journal entries so far.
+
+          === All entries ===
+          ${ALL_ENTRIES}
+          === End ===
+
+          Today new entry:
+          ${NEW_ENTRY}
+
+          Analyze with these sections in markdown (warm, personal tone, in Korean):
+
+          ## 🎭 감정/기분 분석
+          Today emotion state and overall emotion trend.
+
+          ## 🔁 반복되는 패턴
+          Recurring concerns, themes, behavior patterns.
+
+          ## 🌱 성장 포인트
+          Growth and changes compared to before.
+
+          ## ⚠️ 주의할 점
+          Areas needing improvement, gentle advice.
+
+          ## 💡 핵심 키워드 & 관심사
+          Key keywords and interest changes.
+
+          ## 📊 종합 인사이트
+          Overall summary and suggestions for the future.
+
+          If only 1 entry exists, skip pattern analysis. Instead do deep analysis of the first entry and expectations."
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages             -H "content-type: application/json"             -H "x-api-key: $ANTHROPIC_API_KEY"             -H "anthropic-version: 2023-06-01"             -d "$(jq -n               --arg prompt "$PROMPT"               '{
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 4096,
+                messages: [{role: "user", content: $prompt}]
+              }')")
+
+          INSIGHT=$(echo "$RESPONSE" | jq -r '.content[0].text // "Analysis failed"')
+          echo "$INSIGHT" > /tmp/insight.md
+
+      - name: Save insight
+        run: |
+          NEW_FILE="${{ steps.entry.outputs.file }}"
+          BASENAME=$(basename "$NEW_FILE" .md)
+          MONTH_DIR=$(dirname "$(dirname "$NEW_FILE")")
+          INSIGHT_PATH="${MONTH_DIR}/insights/${BASENAME}-insight.md"
+
+          mkdir -p "$(dirname "$INSIGHT_PATH")"
+
+          {
+            echo "# 🔍 ${BASENAME} 회고 인사이트"
+            echo ""
+            echo "> 📝 분석 대상: 총 ${{ steps.collect.outputs.count }}개의 회고"
+            echo "> 🤖 분석: Claude (Anthropic)"
+            echo "> 📅 생성일: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo "---"
+            echo ""
+            cat /tmp/insight.md
+          } > "$INSIGHT_PATH"
+
+          git config user.name "Journal Bot"
+          git config user.email "bot@journal.local"
+          git add "$INSIGHT_PATH"
+          git commit -m "🔍 인사이트: ${BASENAME}"
+          git push
