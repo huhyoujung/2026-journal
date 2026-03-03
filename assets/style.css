@@ -444,6 +444,227 @@ details[open] > .routine-toggle::before {
   color: var(--done);
 }
 
+/* ── Brain Dump ── */
+.braindump-section {
+  margin: 12px 0 16px;
+}
+
+.braindump-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.braindump-label {
+  font-size: 0.78rem;
+  color: var(--undone);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.braindump-view-toggle {
+  background: none;
+  border: none;
+  color: var(--undone);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-left: auto;
+  margin-right: 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.braindump-view-toggle:hover {
+  color: var(--accent);
+}
+
+.braindump-add {
+  background: none;
+  border: none;
+  color: var(--undone);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.braindump-add:hover {
+  color: var(--accent);
+}
+
+.braindump-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bd-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bd-quadrant {
+  background: none;
+  border: none;
+  font-size: 0.72rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 2px 0;
+  color: var(--undone);
+  transition: transform 0.15s;
+}
+
+.bd-quadrant:hover {
+  transform: scale(1.2);
+}
+
+.bd-bullet {
+  font-size: 0.7rem;
+  color: var(--accent);
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.bd-text {
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--ink);
+  background: none;
+  border: none;
+  outline: none;
+  flex: 1;
+  padding: 4px 0;
+  line-height: 1.5;
+  transition: color 0.15s;
+}
+
+.bd-text::placeholder {
+  color: var(--undone);
+}
+
+.bd-delete {
+  background: none;
+  border: none;
+  color: var(--undone);
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0;
+  padding: 2px 4px;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.bd-item:hover .bd-delete {
+  opacity: 1;
+}
+
+.bd-delete:hover {
+  color: #c0392b;
+}
+
+/* 완료 상태 */
+.bd-item.done .bd-bullet {
+  color: var(--done);
+}
+
+.bd-item.done .bd-text {
+  color: var(--undone);
+  text-decoration: line-through;
+}
+
+/* ── 아이젠하워 매트릭스 ── */
+.matrix-view {
+  margin-top: 12px;
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 6px;
+  position: relative;
+}
+
+.matrix-cell {
+  border-radius: 6px;
+  padding: 10px;
+  min-height: 60px;
+}
+
+.matrix-cell.q1 {
+  background: rgba(192, 57, 43, 0.04);
+}
+
+.matrix-cell.q2 {
+  background: rgba(107, 143, 113, 0.06);
+}
+
+.matrix-cell.q3 {
+  background: rgba(176, 141, 87, 0.05);
+}
+
+.matrix-cell.q4 {
+  background: rgba(200, 200, 200, 0.05);
+}
+
+.matrix-cell-label {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--undone);
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.matrix-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.matrix-tag {
+  font-size: 0.75rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 2px 8px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+.matrix-tag.done {
+  color: var(--undone);
+  text-decoration: line-through;
+}
+
+.matrix-axis-label {
+  font-size: 0.6rem;
+  color: var(--undone);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  position: absolute;
+}
+
+.matrix-y-label {
+  left: -18px;
+  top: 50%;
+  transform: rotate(-90deg) translateX(50%);
+  transform-origin: left center;
+}
+
+.matrix-x-label {
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 /* ── 자유 텍스트 ── */
 .text-section {
   margin: 8px 0 16px;

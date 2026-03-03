@@ -262,6 +262,111 @@ function createEntry(data = null) {
   entry.querySelector(".routine-section").appendChild(completionBar);
   updateCompletion(entry);
 
+  // Brain dump — 오늘 할 일
+  const bdList = entry.querySelector(".braindump-list");
+  const bdAdd = entry.querySelector(".braindump-add");
+
+  const QUADRANTS = {
+    q1: { label: "🔥", title: "긴급·중요" },
+    q2: { label: "🎯", title: "중요·비긴급" },
+    q3: { label: "📋", title: "긴급·비중요" },
+    q4: { label: "💤", title: "비긴급·비중요" },
+  };
+
+  function addBraindumpItem(text = "", done = false, quadrant = "") {
+    const item = document.createElement("div");
+    item.className = "bd-item" + (done ? " done" : "");
+    if (quadrant) item.dataset.q = quadrant;
+    item.innerHTML = `
+      <span class="bd-bullet">•</span>
+      <button class="bd-quadrant" title="사분면 지정">${quadrant ? QUADRANTS[quadrant]?.label : "·"}</button>
+      <input type="text" class="bd-text" placeholder="할 일..." value="${escapeHtml(text)}" />
+      <button class="bd-delete" title="삭제">×</button>
+    `;
+
+    // 완료 토글
+    const bullet = item.querySelector(".bd-bullet");
+    bullet.addEventListener("click", () => {
+      item.classList.toggle("done");
+      markDirty();
+      syncMatrix(entry);
+    });
+
+    // 사분면 순환: 없음 → q1 → q2 → q3 → q4 → 없음
+    const qBtn = item.querySelector(".bd-quadrant");
+    const qOrder = ["", "q1", "q2", "q3", "q4"];
+    qBtn.addEventListener("click", () => {
+      const current = item.dataset.q || "";
+      const idx = qOrder.indexOf(current);
+      const next = qOrder[(idx + 1) % qOrder.length];
+      if (next) {
+        item.dataset.q = next;
+        qBtn.textContent = QUADRANTS[next].label;
+        qBtn.title = QUADRANTS[next].title;
+      } else {
+        delete item.dataset.q;
+        qBtn.textContent = "·";
+        qBtn.title = "사분면 지정";
+      }
+      markDirty();
+      syncMatrix(entry);
+    });
+
+    const input = item.querySelector(".bd-text");
+    input.addEventListener("input", () => {
+      markDirty();
+      syncMatrix(entry);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addBraindumpItem();
+        const next = item.nextElementSibling;
+        if (next) next.querySelector(".bd-text")?.focus();
+      }
+      if (e.key === "Backspace" && input.value === "") {
+        e.preventDefault();
+        const prev = item.previousElementSibling;
+        item.remove();
+        markDirty();
+        syncMatrix(entry);
+        if (prev) {
+          const prevInput = prev.querySelector(".bd-text");
+          prevInput?.focus();
+        }
+      }
+    });
+
+    item.querySelector(".bd-delete").addEventListener("click", () => {
+      item.remove();
+      markDirty();
+      syncMatrix(entry);
+    });
+
+    bdList.appendChild(item);
+    return input;
+  }
+
+  // 매트릭스 뷰 토글
+  const viewToggle = entry.querySelector(".braindump-view-toggle");
+  const matrixView = entry.querySelector(".matrix-view");
+  viewToggle.addEventListener("click", () => {
+    const showing = matrixView.style.display !== "none";
+    matrixView.style.display = showing ? "none" : "block";
+    viewToggle.textContent = showing ? "⊞" : "☰";
+    if (!showing) syncMatrix(entry);
+  });
+
+  // 저장된 brain dump 불러오기
+  if (data?.tasks && data.tasks.length) {
+    data.tasks.forEach((t) => addBraindumpItem(t.text, t.done, t.quadrant || ""));
+  }
+
+  bdAdd.addEventListener("click", () => {
+    const input = addBraindumpItem();
+    input.focus();
+  });
+
   // 자유 텍스트
   const textarea = entry.querySelector(".free-text");
   if (data?.text) textarea.value = data.text;
@@ -272,6 +377,35 @@ function createEntry(data = null) {
   requestAnimationFrame(() => autoResize(textarea));
 
   return entry;
+}
+
+// ── 매트릭스 뷰 동기화 ──
+function syncMatrix(entryEl) {
+  const matrixView = entryEl.querySelector(".matrix-view");
+  if (!matrixView || matrixView.style.display === "none") return;
+
+  // 매트릭스 셀 초기화
+  matrixView.querySelectorAll(".matrix-items").forEach((c) => (c.innerHTML = ""));
+
+  // brain dump 항목들을 매트릭스에 배치
+  entryEl.querySelectorAll(".bd-item").forEach((bd) => {
+    const q = bd.dataset.q;
+    const text = bd.querySelector(".bd-text").value;
+    if (!q || !text) return;
+
+    const cell = matrixView.querySelector(`.matrix-cell[data-q="${q}"] .matrix-items`);
+    if (!cell) return;
+
+    const tag = document.createElement("span");
+    tag.className = "matrix-tag" + (bd.classList.contains("done") ? " done" : "");
+    tag.textContent = text;
+    cell.appendChild(tag);
+  });
+}
+
+// ── HTML 이스케이프 ──
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 // ── 체크 아이템 생성 ──
@@ -325,10 +459,22 @@ function collectEntries() {
     el.querySelectorAll(".check-item").forEach((item) => {
       checks[item.dataset.id] = item.classList.contains("done");
     });
+    // Brain dump tasks
+    const tasks = [];
+    el.querySelectorAll(".bd-item").forEach((bd) => {
+      const text = bd.querySelector(".bd-text").value;
+      if (text) {
+        const task = { text, done: bd.classList.contains("done") };
+        if (bd.dataset.q) task.quadrant = bd.dataset.q;
+        tasks.push(task);
+      }
+    });
+
     entries.push({
       id: el.dataset.id,
       date: el.querySelector(".date-input").value,
       checks,
+      tasks,
       text: el.querySelector(".free-text").value,
     });
   });

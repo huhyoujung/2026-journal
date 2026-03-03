@@ -61,6 +61,39 @@
         <div class="checklist weekly-checklist"></div>
       </details>
 
+      <!-- Brain Dump — 오늘 할 일 -->
+      <div class="braindump-section">
+        <div class="braindump-header">
+          <span class="braindump-label">to do</span>
+          <button class="braindump-view-toggle" title="매트릭스 보기">⊞</button>
+          <button class="braindump-add" title="할 일 추가">+</button>
+        </div>
+        <div class="braindump-list"></div>
+        <!-- 아이젠하워 매트릭스 뷰 -->
+        <div class="matrix-view" style="display:none;">
+          <div class="matrix-grid">
+            <div class="matrix-axis-label matrix-y-label">중요</div>
+            <div class="matrix-cell q1" data-q="q1">
+              <span class="matrix-cell-label">🔥 긴급 · 중요</span>
+              <div class="matrix-items"></div>
+            </div>
+            <div class="matrix-cell q2" data-q="q2">
+              <span class="matrix-cell-label">🎯 중요 · 비긴급</span>
+              <div class="matrix-items"></div>
+            </div>
+            <div class="matrix-cell q3" data-q="q3">
+              <span class="matrix-cell-label">📋 긴급 · 비중요</span>
+              <div class="matrix-items"></div>
+            </div>
+            <div class="matrix-cell q4" data-q="q4">
+              <span class="matrix-cell-label">💤 비긴급 · 비중요</span>
+              <div class="matrix-items"></div>
+            </div>
+            <div class="matrix-axis-label matrix-x-label">긴급</div>
+          </div>
+        </div>
+      </div>
+
       <!-- 자유 텍스트 -->
       <div class="text-section">
         <textarea class="free-text" placeholder="오늘 하루를 적어보세요..." rows="4"></textarea>
