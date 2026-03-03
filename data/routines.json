@@ -1,0 +1,33 @@
+{
+  "quadrants": {
+    "mind": { "label": "Mind", "emoji": "🧠", "color": "#7c6a5b" },
+    "body": { "label": "Body", "emoji": "💪", "color": "#6b8f71" },
+    "spirit": { "label": "Spirit", "emoji": "✨", "color": "#b08d57" },
+    "vocation": { "label": "Vocation", "emoji": "🔨", "color": "#5b7c8a" }
+  },
+  "daily": [
+    { "id": "morning-plan", "label": "아침 계획 작성", "quadrant": "mind" },
+    { "id": "paper-read", "label": "논문 요약 읽고 반응", "quadrant": "mind" },
+    { "id": "study-book", "label": "스포츠지도사 책 1p+", "quadrant": "mind" },
+    { "id": "clean-diet", "label": "클린 식단 (밀가루·정제당·가공육 X)", "quadrant": "body" },
+    { "id": "diet-kept", "label": "식단 챌린지 유지", "quadrant": "body" },
+    { "id": "sleep-1030", "label": "10:30 전 취침", "quadrant": "body" },
+    { "id": "burn-400kcal", "label": "400kcal 소모", "quadrant": "body" },
+    { "id": "instrument-practice", "label": "악기 10분 만지기", "quadrant": "spirit" },
+    { "id": "listen-setlist", "label": "공연곡 듣기", "quadrant": "spirit" },
+    { "id": "newsletter-read", "label": "경제 뉴스레터 읽고 반응", "quadrant": "spirit" },
+    { "id": "achievement-check", "label": "달성률 체크", "quadrant": "spirit" },
+    { "id": "evening-review", "label": "저녁 회고 작성", "quadrant": "spirit" },
+    { "id": "music-commit", "label": "음원 커밋 1개+", "quadrant": "vocation" },
+    { "id": "journal-service-commit", "label": "회고 서비스 커밋 1개+", "quadrant": "vocation" },
+    { "id": "football-service-commit", "label": "축구팀 서비스 커밋 1개+", "quadrant": "vocation" }
+  ],
+  "weekly": [
+    { "id": "gym-thu-fri", "label": "헬스 (목·금)", "quadrant": "body" },
+    { "id": "lifting-practice", "label": "리프팅 연습", "quadrant": "body" },
+    { "id": "nutty-training", "label": "너티 훈련 참석", "quadrant": "body" },
+    { "id": "drum-lesson", "label": "드럼 레슨", "quadrant": "spirit" },
+    { "id": "expense-review", "label": "지출 기록 & 점검", "quadrant": "spirit" },
+    { "id": "threads-3", "label": "스레드 3개+ 발행", "quadrant": "vocation" }
+  ]
+}

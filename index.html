@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026 Bullet Journal</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+  <!-- 상단 툴바 -->
+  <div class="toolbar">
+    <span class="sync-status" id="syncStatus">●</span>
+    <button class="save-btn" id="saveBtn" title="클라우드에 저장">저장</button>
+  </div>
+
+  <!-- 토큰 설정 모달 -->
+  <div class="modal-overlay" id="tokenModal">
+    <div class="modal">
+      <h3>GitHub 연결</h3>
+      <p>다른 기기에서도 동기화하려면 GitHub Personal Access Token이 필요해요.</p>
+      <p class="modal-hint"><a href="https://github.com/settings/tokens/new?scopes=repo&description=2026-journal" target="_blank">여기서 토큰 생성</a> → repo 권한 체크</p>
+      <input type="password" id="tokenInput" class="token-input" placeholder="ghp_xxxxxxxxxxxx" />
+      <div class="modal-actions">
+        <button id="tokenSkip" class="modal-btn-skip">나중에</button>
+        <button id="tokenSave" class="modal-btn-save">연결</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="notebook">
+    <!-- 왼쪽 페이지 -->
+    <div class="page page-left">
+      <header class="cover">
+        <h1>2026</h1>
+        <p class="subtitle">Bullet Journal</p>
+      </header>
+      <div id="entries-left"></div>
+    </div>
+
+    <!-- 오른쪽 페이지 -->
+    <div class="page page-right">
+      <div id="entries-right"></div>
+      <button class="new-page-btn" id="newPageBtn">+ 새 페이지 쓰기</button>
+    </div>
+  </div>
+
+  <!-- 엔트리 템플릿 (JS에서 복제) -->
+  <template id="entryTemplate">
+    <article class="entry">
+      <div class="entry-date">
+        <input type="text" class="date-input" placeholder="3.3 월" />
+        <button class="delete-entry-btn" title="삭제">×</button>
+      </div>
+      <div class="separator"></div>
+
+      <!-- 루틴 체크리스트 -->
+      <details class="routine-section" open>
+        <summary class="routine-toggle">오늘의 루틴</summary>
+        <div class="checklist daily-checklist"></div>
+        <div class="checklist weekly-checklist"></div>
+      </details>
+
+      <!-- 자유 텍스트 -->
+      <div class="text-section">
+        <textarea class="free-text" placeholder="오늘 하루를 적어보세요..." rows="4"></textarea>
+      </div>
+
+      <div class="page-divider"></div>
+    </article>
+  </template>
+
+  <!-- 체크 아이템 템플릿 -->
+  <template id="checkItemTemplate">
+    <label class="check-item">
+      <span class="bullet">•</span>
+      <span class="check-label"></span>
+      <span class="check-mark">·</span>
+    </label>
+  </template>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
