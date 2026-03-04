@@ -631,19 +631,19 @@ function renderRoutineTable() {
   container.appendChild(table);
 }
 
-// ── 모달 열기/닫기 ──
-function openRoutineModal() {
-  const modal = document.getElementById("routineModal");
-  if (modal) {
+// ── 드롭다운 제어 ──
+function openRoutineDropdown() {
+  const dropdown = document.getElementById("routineDropdown");
+  if (dropdown) {
     renderRoutineTable();
-    modal.classList.add("visible");
+    dropdown.classList.add("expanded");
   }
 }
 
-function closeRoutineModal() {
-  const modal = document.getElementById("routineModal");
-  if (modal) {
-    modal.classList.remove("visible");
+function closeRoutineDropdown() {
+  const dropdown = document.getElementById("routineDropdown");
+  if (dropdown) {
+    dropdown.classList.remove("expanded");
   }
 }
 
@@ -697,16 +697,12 @@ loadRoutines().then(() => {
   loadEntries();
 });
 
-// 루틴 토글 버튼
-document.getElementById("routineToggleBtn").addEventListener("click", openRoutineModal);
-document.getElementById("routineModalClose").addEventListener("click", closeRoutineModal);
-
-// 모달 배경 클릭으로 닫기
-document.getElementById("routineModal").addEventListener("click", (e) => {
-  if (e.target === document.getElementById("routineModal")) {
-    closeRoutineModal();
-  }
-});
+// 드롭다운 호버
+const dropdown = document.getElementById("routineDropdown");
+if (dropdown) {
+  dropdown.addEventListener("mouseenter", openRoutineDropdown);
+  dropdown.addEventListener("mouseleave", closeRoutineDropdown);
+}
 
 // 저장 버튼
 document.getElementById("saveBtn").addEventListener("click", async () => {
