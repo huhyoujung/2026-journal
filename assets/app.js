@@ -547,3 +547,122 @@ function rebalancePages() {
   const all = Array.from(document.querySelectorAll(".entry"));
   distributeEntries(all);
 }
+
+// ── 루틴 카드 렌더링 ──
+function renderRoutinePanel() {
+  const container = document.getElementById("routineCards");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const allRoutines = [...(routines.daily || []), ...(routines.weekly || [])];
+  
+  allRoutines.forEach((routine) => {
+    const card = document.createElement("div");
+    card.className = "routine-card";
+    card.innerHTML = `
+      <span class="routine-card-label">${escapeHtml(routine.label)}</span>
+      <div class="routine-card-dates" data-routine-id="${routine.id}"></div>
+    `;
+    
+    // 최근 7일 체크 상태
+    const datesEl = card.querySelector(".routine-card-dates");
+    const entries = Array.from(document.querySelectorAll(".entry"));
+    const recentEntries = entries.slice(-7);
+    
+    recentEntries.forEach((entry) => {
+      const checkItem = entry.querySelector(`.check-item[data-id="${routine.id}"]`);
+      const isDone = checkItem && checkItem.classList.contains("done");
+      
+      const dot = document.createElement("div");
+      dot.className = "routine-check" + (isDone ? " done" : "");
+      dot.textContent = isDone ? "✓" : "·";
+      dot.title = entry.querySelector(".date-input").value || "무제";
+      dot.addEventListener("click", (e) => {
+        e.stopPropagation();
+        checkItem?.click();
+        renderRoutinePanel();
+      });
+      datesEl.appendChild(dot);
+    });
+    
+    container.appendChild(card);
+  });
+}
+
+// ── 스와이프 페이지 네비게이션 ──
+let currentPage = 0;
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener("touchstart", (e) => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, false);
+
+document.addEventListener("touchend", (e) => {
+  const touchEndX = e.changedTouches[0].clientX;
+  const touchEndY = e.changedTouches[0].clientY;
+  
+  const deltaX = touchEndX - touchStartX;
+  const deltaY = Math.abs(touchEndY - touchStartY);
+  
+  // 수평 스와이프만 감지 (수직 스크롤은 무시)
+  if (Math.abs(deltaX) > 50 && deltaY < 50) {
+    const notebook = document.querySelector(".notebook");
+    
+    if (deltaX < 0) {
+      // 좌측 스와이프: 다음 페이지
+      currentPage++;
+      notebook.style.transform = `translateX(calc(-100vw * ${currentPage}))`;
+      
+      // 마지막 페이지면 신규 엔트리 추가
+      const entries = Array.from(document.querySelectorAll(".entry"));
+      if (currentPage > Math.ceil(entries.length / 2)) {
+        setTimeout(() => {
+          const newEntry = createEntry();
+          const right = document.getElementById("entries-right");
+          right.innerHTML = "";
+          right.appendChild(newEntry);
+          markDirty();
+        }, 250);
+      }
+    } else if (deltaX > 0 && currentPage > 0) {
+      // 우측 스와이프: 이전 페이지
+      currentPage--;
+      notebook.style.transform = `translateX(calc(-100vw * ${currentPage}))`;
+    }
+  }
+}, false);
+
+// ── 초기 로드 및 이벤트 ──
+loadRoutines().then(() => {
+  loadEntries().then(() => {
+    renderRoutinePanel();
+  });
+});
+
+document.getElementById("saveBtn").addEventListener("click", async () => {
+  if (!getToken()) {
+    showTokenModal();
+    return;
+  }
+  setSyncStatus("saving");
+  try {
+    await saveToGitHub(collectEntries());
+    setSyncStatus("saved");
+  } catch (e) {
+    console.error("저장 실패:", e);
+    setSyncStatus("error");
+  }
+});
+
+document.getElementById("tokenSkip").addEventListener("click", hideTokenModal);
+document.getElementById("tokenSave").addEventListener("click", () => {
+  const token = document.getElementById("tokenInput").value;
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    hideTokenModal();
+    setSyncStatus("dirty");
+  }
+});
+
