@@ -548,45 +548,103 @@ function rebalancePages() {
   distributeEntries(all);
 }
 
-// ── 루틴 카드 렌더링 ──
-function renderRoutinePanel() {
-  const container = document.getElementById("routineCards");
+// ── 월별 루틴 테이블 렌더링 ──
+function renderRoutineTable() {
+  const container = document.getElementById("routineTableContainer");
   if (!container) return;
   container.innerHTML = "";
 
-  const allRoutines = [...(routines.daily || []), ...(routines.weekly || [])];
+  const entries = Array.from(document.querySelectorAll(".entry"));
+  if (!entries.length) return;
+
+  // 현재 달의 일 개수 계산
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   
-  allRoutines.forEach((routine) => {
-    const card = document.createElement("div");
-    card.className = "routine-card";
-    card.innerHTML = `
-      <span class="routine-card-label">${escapeHtml(routine.label)}</span>
-      <div class="routine-card-dates" data-routine-id="${routine.id}"></div>
-    `;
-    
-    // 최근 7일 체크 상태
-    const datesEl = card.querySelector(".routine-card-dates");
-    const entries = Array.from(document.querySelectorAll(".entry"));
-    const recentEntries = entries.slice(-7);
-    
-    recentEntries.forEach((entry) => {
-      const checkItem = entry.querySelector(`.check-item[data-id="${routine.id}"]`);
-      const isDone = checkItem && checkItem.classList.contains("done");
-      
-      const dot = document.createElement("div");
-      dot.className = "routine-check" + (isDone ? " done" : "");
-      dot.textContent = isDone ? "✓" : "·";
-      dot.title = entry.querySelector(".date-input").value || "무제";
-      dot.addEventListener("click", (e) => {
-        e.stopPropagation();
-        checkItem?.click();
-        renderRoutinePanel();
-      });
-      datesEl.appendChild(dot);
-    });
-    
-    container.appendChild(card);
+  // 엔트리 맵: 날짜 -> entry 객체
+  const entryMap = {};
+  entries.forEach((el) => {
+    const dateStr = el.querySelector(".date-input").value;
+    if (dateStr) {
+      const day = parseInt(dateStr.split(".")[1]);
+      entryMap[day] = el;
+    }
   });
+
+  // 테이블 생성
+  const table = document.createElement("table");
+  table.className = "routine-table";
+
+  // 헤더: 루틴 이름 + 날짜
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  const routineHeaderCell = document.createElement("th");
+  routineHeaderCell.textContent = "루틴";
+  headerRow.appendChild(routineHeaderCell);
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const th = document.createElement("th");
+    th.textContent = day;
+    headerRow.appendChild(th);
+  }
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  // 바디: 각 루틴별 행
+  const tbody = document.createElement("tbody");
+  const allRoutines = [...(routines.daily || []), ...(routines.weekly || [])];
+
+  allRoutines.forEach((routine) => {
+    const row = document.createElement("tr");
+    
+    const labelCell = document.createElement("td");
+    labelCell.textContent = routine.label;
+    row.appendChild(labelCell);
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cell = document.createElement("td");
+      const entry = entryMap[day];
+      const isDone = entry ? 
+        entry.querySelector(`.check-item[data-id="${routine.id}"]`)?.classList.contains("done") :
+        false;
+
+      cell.className = "routine-check-cell" + (isDone ? " done" : "");
+      cell.textContent = isDone ? "✓" : "·";
+      cell.style.cursor = entry ? "pointer" : "default";
+      cell.style.opacity = entry ? "1" : "0.3";
+
+      if (entry) {
+        cell.addEventListener("click", () => {
+          const checkItem = entry.querySelector(`.check-item[data-id="${routine.id}"]`);
+          if (checkItem) {
+            checkItem.click();
+            renderRoutineTable(); // 테이블 새로고침
+          }
+        });
+      }
+      row.appendChild(cell);
+    }
+    tbody.appendChild(row);
+  });
+
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+// ── 모달 열기/닫기 ──
+function openRoutineModal() {
+  const modal = document.getElementById("routineModal");
+  if (modal) {
+    renderRoutineTable();
+    modal.classList.add("visible");
+  }
+}
+
+function closeRoutineModal() {
+  const modal = document.getElementById("routineModal");
+  if (modal) {
+    modal.classList.remove("visible");
+  }
 }
 
 // ── 스와이프 페이지 네비게이션 ──
@@ -636,11 +694,21 @@ document.addEventListener("touchend", (e) => {
 
 // ── 초기 로드 및 이벤트 ──
 loadRoutines().then(() => {
-  loadEntries().then(() => {
-    renderRoutinePanel();
-  });
+  loadEntries();
 });
 
+// 루틴 토글 버튼
+document.getElementById("routineToggleBtn").addEventListener("click", openRoutineModal);
+document.getElementById("routineModalClose").addEventListener("click", closeRoutineModal);
+
+// 모달 배경 클릭으로 닫기
+document.getElementById("routineModal").addEventListener("click", (e) => {
+  if (e.target === document.getElementById("routineModal")) {
+    closeRoutineModal();
+  }
+});
+
+// 저장 버튼
 document.getElementById("saveBtn").addEventListener("click", async () => {
   if (!getToken()) {
     showTokenModal();
@@ -656,6 +724,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   }
 });
 
+// 토큰 모달
 document.getElementById("tokenSkip").addEventListener("click", hideTokenModal);
 document.getElementById("tokenSave").addEventListener("click", () => {
   const token = document.getElementById("tokenInput").value;

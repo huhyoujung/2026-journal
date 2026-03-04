@@ -28,11 +28,19 @@
     </div>
   </div>
 
-  <!-- 사이드 패널: 루틴 추적 -->
-  <aside class="routine-panel">
-    <h2 class="routine-panel-title">루틴</h2>
-    <div class="routine-cards" id="routineCards"></div>
-  </aside>
+  <!-- 월별 루틴 테이블 뷰 (모달) -->
+  <div class="routine-modal-overlay" id="routineModal">
+    <div class="routine-modal">
+      <div class="routine-modal-header">
+        <h2>루틴 트래킹</h2>
+        <button class="routine-modal-close" id="routineModalClose">✕</button>
+      </div>
+      <div class="routine-table-container" id="routineTableContainer"></div>
+    </div>
+  </div>
+
+  <!-- 루틴 토글 버튼 (상단 우측) -->
+  <button class="routine-toggle-btn" id="routineToggleBtn" title="루틴 보기">📊</button>
 
   <div class="notebook">
     <!-- 왼쪽 페이지 -->

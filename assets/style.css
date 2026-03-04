@@ -183,93 +183,151 @@ body {
   opacity: 0.85;
 }
 
-/* ── 사이드 패널: 루틴 추적 ── */
-.routine-panel {
+/* ── 루틴 토글 버튼 ── */
+.routine-toggle-btn {
   position: fixed;
-  left: 0;
-  top: 0;
-  width: 180px;
-  height: 100vh;
-  background: linear-gradient(135deg, #faf8f5 0%, #f5f3f0 100%);
-  padding: 24px 12px;
-  overflow-y: auto;
-  border-right: 1px solid var(--divider);
-  box-shadow: 2px 0 8px var(--shadow);
-  z-index: 50;
+  bottom: 32px;
+  right: 32px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: white;
+  font-size: 1.4rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+  z-index: 40;
 }
 
-.routine-panel-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--accent);
-  margin-bottom: 16px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+.routine-toggle-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
-.routine-cards {
+.routine-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── 루틴 모달 ── */
+.routine-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.routine-modal-overlay.visible {
+  display: flex;
+}
+
+.routine-modal {
+  background: var(--bg);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 90vw;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  overflow: hidden;
+  width: 100%;
 }
 
-.routine-card {
-  background: white;
-  border: 1px solid var(--divider);
-  border-radius: 8px;
-  padding: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px var(--shadow);
-}
-
-.routine-card:hover {
-  box-shadow: 0 4px 8px var(--shadow);
-  transform: translateY(-2px);
-}
-
-.routine-card-label {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--ink);
-  margin-bottom: 8px;
-  display: block;
-  word-break: break-word;
-}
-
-.routine-card-dates {
+.routine-modal-header {
   display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-}
-
-.routine-check {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1px solid var(--divider);
-  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  font-size: 0.6rem;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.routine-modal-header h2 {
+  font-size: 1.2rem;
+  color: var(--ink);
+  margin: 0;
+}
+
+.routine-modal-close {
+  background: none;
+  border: none;
+  color: var(--undone);
+  font-size: 1.4rem;
   cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
+  padding: 0 8px;
+  transition: color 0.2s;
 }
 
-.routine-check.done {
-  background: var(--done);
-  border-color: var(--done);
-  color: white;
+.routine-modal-close:hover {
+  color: var(--accent);
 }
 
-.routine-check:hover {
-  transform: scale(1.15);
+.routine-table-container {
+  overflow: auto;
+  flex: 1;
+  padding: 16px 24px;
 }
 
-/* ── 노트북 (펼친 2페이지) + 사이드 패널 레아웃 ── */
-body {
-  margin-left: 180px;
+/* ── 루틴 테이블 ── */
+.routine-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.routine-table thead {
+  background: rgba(124, 106, 91, 0.05);
+  position: sticky;
+  top: 0;
+}
+
+.routine-table th,
+.routine-table td {
+  border: 1px solid var(--divider);
+  padding: 8px;
+  text-align: center;
+}
+
+.routine-table th {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.routine-table thead th:first-child {
+  text-align: left;
+  width: 120px;
+}
+
+.routine-table tbody td:first-child {
+  text-align: left;
+  font-weight: 500;
+  background: rgba(124, 106, 91, 0.02);
+  font-size: 0.88rem;
+}
+
+.routine-check-cell {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+  font-weight: 600;
+}
+
+.routine-check-cell:hover {
+  background: rgba(107, 143, 113, 0.1);
+}
+
+.routine-check-cell.done {
+  color: var(--done);
+  background: rgba(107, 143, 113, 0.08);
+}
+
+.routine-check-cell.missed {
+  color: var(--undone);
 }
 
 .notebook {
@@ -843,11 +901,20 @@ details[open] > .routine-toggle::before {
 @media (max-width: 768px) {
   body {
     padding: 0;
-    margin-left: 0;
   }
 
-  .routine-panel {
-    display: none;
+  .routine-toggle-btn {
+    bottom: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 1.2rem;
+  }
+
+  .routine-modal {
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
   }
 
   .notebook {
